@@ -6,7 +6,7 @@
 <title>كثبان الحروف</title>
 <meta name="theme-color" content="#0b0a12">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
 <style>
 *{box-sizing:border-box}
 :root{
@@ -17,7 +17,7 @@
   --accent:#e6c08a;
   --accent-ink:#1a1420;
   --body:#0b0a12;
-  --f-display:"Aref Ruqaa","Amiri",serif;
+  --f-display:"Lalezar","Amiri",serif;
   --f-ui:"IBM Plex Sans Arabic",system-ui,sans-serif;
   color-scheme:dark;
 }
@@ -127,7 +127,7 @@ button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline
 <script>
 (() => {
   // الإعدادات
-  const FONT = '"Aref Ruqaa","Amiri",serif';
+  const FONT = '"Lalezar","Amiri",serif';
   const PRESETS = ['عبدالله'];
   const MODES = {
     night: { sky:['#07060d','#15121f','#2a2030'], orb:'moon', stars:1,
@@ -196,9 +196,9 @@ button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline
     const o = document.createElement('canvas'); o.width = W; o.height = H;
     const x = o.getContext('2d', { willReadFrequently:true });
     let size = Math.min(H*.3, 230);
-    x.font = `700 ${size}px ${FONT}`;
+    x.font = `400 ${size}px ${FONT}`;
     const m = x.measureText(text).width;
-    if (m > W*.86){ size *= (W*.86)/m; x.font = `700 ${size}px ${FONT}`; }
+    if (m > W*.86){ size *= (W*.86)/m; x.font = `400 ${size}px ${FONT}`; }
     x.direction = 'rtl'; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.fillStyle = '#fff'; x.fillText(text, W/2, H*.43);
     const d = x.getImageData(0,0,W,H).data, pts = [], step = size < 90 ? 2 : 3;
@@ -382,8 +382,13 @@ button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline
   let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(build, 200); });
 
   renderChips();
-  const start = () => { build(); requestAnimationFrame(frame); };
-  (document.fonts ? document.fonts.load('700 100px "Aref Ruqaa"').catch(() => {}) : Promise.resolve()).then(start, start);
+  // ننتظر الخط قبل ما نرسم، ونعيد التشكيل لو تحمّل متأخر
+  let started = false;
+  const start = () => { if (started) return; started = true; build(); requestAnimationFrame(frame); };
+  const waitFont = () => (document.fonts ? document.fonts.load('400 100px "Lalezar"', 'عبدالله').catch(() => {}) : Promise.resolve()).then(start, start);
+  if (document.readyState === 'complete') waitFont(); else addEventListener('load', waitFont);
+  setTimeout(start, 2500);
+  if (document.fonts) document.fonts.addEventListener('loadingdone', () => { if (started && !melted) setTargets(word); });
 })();
 </script>
 </body>
