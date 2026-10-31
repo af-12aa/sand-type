@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>كثبان الحروف</title>
+<meta name="theme-color" content="#0b0a12">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+:root{
+  --ink:#e7e1f2;
+  --muted:#8a84a0;
+  --glass:rgba(24,21,36,.62);
+  --line:rgba(255,255,255,.09);
+  --accent:#e6c08a;
+  --accent-ink:#1a1420;
+  --body:#0b0a12;
+  --f-display:"Aref Ruqaa","Amiri",serif;
+  --f-ui:"IBM Plex Sans Arabic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+:root[data-mode="dusk"]{
+  --ink:#fff1e6;
+  --muted:#e4b9a8;
+  --glass:rgba(60,28,48,.5);
+  --line:rgba(255,230,210,.16);
+  --accent:#ffcf8a;
+  --accent-ink:#3a1830;
+  --body:#2a1730;
+}
+html,body{height:100%;margin:0}
+body{background:var(--body);color:var(--ink);font-family:var(--f-ui);overflow:hidden;direction:rtl;
+  -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;transition:background .8s}
+
+.stage{position:fixed;inset:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sky{transition:opacity .9s ease}
+#fg{touch-action:none;cursor:none}
+
+/* الشريط العلوي */
+.top{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.sig{display:flex;flex-direction:column;gap:2px;line-height:1.2}
+.sig b{font:600 14px var(--f-ui);letter-spacing:.01em}
+.sig span{font-size:11px;color:var(--muted);letter-spacing:.06em;direction:ltr;text-align:right}
+.tools{display:flex;gap:8px;pointer-events:auto}
+.seg{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:3px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.seg button{font:500 12.5px var(--f-ui);color:var(--muted);background:transparent;border:0;border-radius:999px;padding:6px 12px;cursor:pointer;transition:color .3s,background .3s}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.icon{width:36px;height:36px;display:grid;place-items:center;border-radius:999px;background:var(--glass);border:1px solid var(--line);color:var(--ink);cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.icon svg{width:17px;height:17px}
+.icon .w{opacity:0;transition:opacity .25s}
+.icon[aria-pressed="true"] .w{opacity:1}
+.icon[aria-pressed="true"] .x{opacity:0}
+
+/* التلميح */
+.hint{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 74px);text-align:center;pointer-events:none;
+  font-size:13px;color:var(--muted);transition:opacity .8s, transform .8s;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hint kbd{font:inherit;color:var(--ink);border-bottom:1px dashed var(--line)}
+.hint.gone{opacity:0;transform:translateY(-6px)}
+
+/* أدوات الأسفل */
+.dock{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.panel{pointer-events:auto;width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.chip{font:500 13px var(--f-ui);color:var(--ink);background:var(--glass);border:1px solid var(--line);border-radius:999px;
+  padding:6px 13px;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:border-color .3s,color .3s,transform .15s}
+.chip:active{transform:scale(.95)}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.field{position:relative;display:flex;align-items:center;background:var(--glass);border:1px solid var(--line);border-radius:14px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:border-color .3s}
+.field:focus-within{border-color:var(--accent)}
+.field input{flex:1;min-width:0;font:500 16px var(--f-ui);color:var(--ink);background:transparent;border:0;outline:none;padding:13px 16px;user-select:text;-webkit-user-select:text}
+.field input::placeholder{color:var(--muted)}
+.count{font:500 11px var(--f-ui);color:var(--muted);padding-inline-end:6px;font-variant-numeric:tabular-nums;direction:ltr}
+.gust{margin:5px;font:600 13px var(--f-ui);border:0;border-radius:10px;padding:9px 14px;background:var(--accent);color:var(--accent-ink);cursor:pointer;transition:transform .15s}
+.gust:active{transform:scale(.94)}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+@media (prefers-reduced-motion: reduce){ .sky,.hint,body{transition:none} }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <canvas class="sky" id="skyA"></canvas>
+  <canvas class="sky" id="skyB" style="opacity:0"></canvas>
+  <canvas id="fg" aria-label="حروف من رمل تتفاعل مع اللمس"></canvas>
+</div>
+
+<header class="top">
+  <div class="sig"><b>عبدالله</b><span>SAND · TYPE / 01</span></div>
+  <div class="tools">
+    <div class="seg" role="group" aria-label="وقت المشهد">
+      <button id="mNight" aria-pressed="true">ليل</button>
+      <button id="mDusk" aria-pressed="false">غروب</button>
+    </div>
+    <button class="icon" id="snd" aria-pressed="false" aria-label="صوت الرمل">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>
+        <path class="w" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>
+        <path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<p class="hint" id="hint">مرّر إصبعك في الرمل · <kbd>اضغط مطوّلًا</kbd> وشوف الحروف تذوب</p>
+
+<div class="dock">
+  <div class="panel">
+    <div class="chips" id="chips"></div>
+    <form class="field" id="f">
+      <input id="word" maxlength="12" placeholder="اكتب أي كلمة وشوفها تتكوّن…" autocomplete="off" enterkeyhint="done">
+      <span class="count" id="count">0/12</span>
+      <button class="gust" type="button" id="gust">ريح</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(() => {
+  // الإعدادات
+  const FONT = '"Aref Ruqaa","Amiri",serif';
+  const PRESETS = ['عبدالله'];
+  const MODES = {
+    night: { sky:['#07060d','#15121f','#2a2030'], orb:'moon', stars:1,
+             sand:['#f3dcae','#e6c08a','#d9a35f','#c98b4f','#b87c45','#efd09b'] },
+    dusk:  { sky:['#22142e','#7d3a5a','#ec8a5c'], orb:'sun', stars:.25,
+             sand:['#ffe2b8','#f7bf85','#e8a066','#d4804f','#b2603d','#ffd09a'] }
+  };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // الكانفس
+  const fg = document.getElementById('fg'), c = fg.getContext('2d');
+  const skies = [document.getElementById('skyA'), document.getElementById('skyB')];
+  let skyFront = 0;
+
+  let W = 0, H = 0, dpr = 1, parts = [], word = PRESETS[0], mode = 'night';
+  let gust = 0, gustDir = 1, melted = false, sweep = -1, sweepFrom = 'night';
+  const ptr = { x:-9999, y:-9999, px:-9999, py:-9999, on:false, sx:0, sy:0, speed:0 };
+
+  const rng = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const dune = x => H - 30 - 26*Math.sin(x*.006 + 1.3) - 12*Math.sin(x*.017) - 6*Math.sin(x*.041 + 2);
+
+  function paintSky(cv, m){
+    const s = MODES[m], b = cv.getContext('2d');
+    cv.width = W*dpr; cv.height = H*dpr; b.setTransform(dpr,0,0,dpr,0,0);
+    const g = b.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, s.sky[0]); g.addColorStop(.62, s.sky[1]); g.addColorStop(1, s.sky[2]);
+    b.fillStyle = g; b.fillRect(0,0,W,H);
+    const r = rng(11);
+    for (let i = 0; i < W*H/2400*s.stars; i++){
+      const y = r()*H*.65, big = r() < .07;
+      b.globalAlpha = (.15 + r()*.65) * (1 - y/(H*.65));
+      b.fillStyle = '#f1ecff'; b.fillRect(r()*W, y, big?1.7:1, big?1.7:1);
+    }
+    b.globalAlpha = 1;
+    const R = Math.min(W,H)*.04 + 10;
+    if (s.orb === 'moon'){
+      const mx = W*.22, my = H*.22;
+      const halo = b.createRadialGradient(mx,my,R*.5,mx,my,R*5);
+      halo.addColorStop(0,'rgba(241,230,200,.12)'); halo.addColorStop(1,'rgba(241,230,200,0)');
+      b.fillStyle = halo; b.fillRect(0,0,W,H);
+      // الهلال في كانفس منفصل
+      const m = document.createElement('canvas'); m.width = m.height = Math.ceil(R*2.4*dpr);
+      const mc = m.getContext('2d'); mc.scale(dpr,dpr); const o = R*1.2;
+      mc.fillStyle = '#f1e6c8'; mc.beginPath(); mc.arc(o,o,R,0,7); mc.fill();
+      mc.globalCompositeOperation = 'destination-out';
+      mc.beginPath(); mc.arc(o + R*.42, o - R*.18, R*.92, 0, 7); mc.fill();
+      b.drawImage(m, mx - o, my - o, R*2.4, R*2.4);
+    } else {
+      const sx = W*.74, sy = H*.7;
+      const glow = b.createRadialGradient(sx,sy,R,sx,sy,R*9);
+      glow.addColorStop(0,'rgba(255,200,130,.45)'); glow.addColorStop(1,'rgba(255,200,130,0)');
+      b.fillStyle = glow; b.fillRect(0,0,W,H);
+      b.fillStyle = '#ffd59a'; b.beginPath(); b.arc(sx,sy,R*1.5,0,7); b.fill();
+    }
+  }
+
+  function crossfadeSky(m){
+    const back = skies[1 - skyFront];
+    paintSky(back, m);
+    back.style.opacity = 1; skies[skyFront].style.opacity = 0;
+    skyFront = 1 - skyFront;
+  }
+
+  // تحويل النص لنقاط
+  function sample(text){
+    const o = document.createElement('canvas'); o.width = W; o.height = H;
+    const x = o.getContext('2d', { willReadFrequently:true });
+    let size = Math.min(H*.3, 230);
+    x.font = `700 ${size}px ${FONT}`;
+    const m = x.measureText(text).width;
+    if (m > W*.86){ size *= (W*.86)/m; x.font = `700 ${size}px ${FONT}`; }
+    x.direction = 'rtl'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = '#fff'; x.fillText(text, W/2, H*.43);
+    const d = x.getImageData(0,0,W,H).data, pts = [], step = size < 90 ? 2 : 3;
+    for (let yy = 0; yy < H; yy += step) for (let xx = 0; xx < W; xx += step)
+      if (d[(yy*W + xx)*4 + 3] > 128) pts.push([xx + Math.random()*step*.6, yy + Math.random()*step*.6]);
+    for (let i = pts.length - 1; i > 0; i--){ const j = Math.random()*(i+1)|0; [pts[i], pts[j]] = [pts[j], pts[i]]; }
+    return pts;
+  }
+
+  function groundTarget(p){ p.tx = Math.random()*W; p.ty = dune(p.tx) + Math.random()*(H - dune(p.tx)); }
+
+  function setTargets(text){
+    const pts = text ? sample(text) : [], n = parts.length;
+    const use = Math.min(pts.length, Math.round(n*.8));
+    const order = parts.map((_, i) => i).sort((a, z) => parts[a].x - parts[z].x);
+    const chosen = pts.slice(0, use).sort((a, z) => a[0] - z[0]);
+    order.forEach((idx, k) => {
+      const p = parts[idx];
+      if (k < use){ p.tx = chosen[k][0]; p.ty = chosen[k][1]; }
+      else groundTarget(p);
+      p.delay = reduce ? 0 : (k/n)*45 + Math.random()*22;
+    });
+  }
+
+  function build(){
+    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
+    fg.width = W*dpr; fg.height = H*dpr; c.setTransform(dpr,0,0,dpr,0,0);
+    paintSky(skies[skyFront], mode);
+    const n = Math.round(Math.min(5200, Math.max(1900, W*H/250)));
+    parts = [];
+    for (let i = 0; i < n; i++){
+      const x = Math.random()*W;
+      parts.push({ x, y: dune(x) + Math.random()*(H - dune(x)), vx:0, vy:0, tx:x, ty:0,
+        ci: Math.random()*6|0, s: Math.random() < .14 ? 2 : 1.4, k: .018 + Math.random()*.02, delay:0 });
+    }
+    setTargets(melted ? '' : word);
+  }
+
+  // الأحداث
+  const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+
+  function blow(next){
+    gust = reduce ? 0 : 55; gustDir = Math.random() < .5 ? -1 : 1;
+    for (const p of parts){ p.vx += gustDir*(2 + Math.random()*5); p.vy -= Math.random()*2.5; }
+    buzz(12);
+    setTimeout(() => setTargets(next), reduce ? 0 : 380);
+  }
+
+  function setWord(w){
+    if (!w || w === word) return;
+    word = w; renderChips(); blow(word);
+  }
+
+  function setMode(m){
+    if (m === mode) return;
+    sweepFrom = mode; mode = m; sweep = 0;
+    document.documentElement.dataset.mode = m;
+    document.getElementById('mNight').setAttribute('aria-pressed', m === 'night');
+    document.getElementById('mDusk').setAttribute('aria-pressed', m === 'dusk');
+    document.querySelector('meta[name="theme-color"]').content = MODES[m].sky[0];
+    crossfadeSky(m);
+  }
+
+  // صوت الرمل
+  let ac = null, gain, filt, soundOn = false;
+  function initAudio(){
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random()*2 - 1;
+    const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+    filt = ac.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 1800; filt.Q.value = .8;
+    gain = ac.createGain(); gain.gain.value = 0;
+    src.connect(filt).connect(gain).connect(ac.destination); src.start();
+  }
+  function tickAudio(){
+    if (!ac) return;
+    const g = soundOn ? Math.min(.32, ptr.speed*.011 + (gust/55)*.22) : 0;
+    gain.gain.setTargetAtTime(g, ac.currentTime, .06);
+    filt.frequency.setTargetAtTime(1200 + ptr.speed*40, ac.currentTime, .08);
+  }
+
+  // الرسم كل فريم
+  function frame(){
+    c.globalCompositeOperation = 'destination-out';
+    c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(0,0,W,H);
+    c.globalCompositeOperation = 'source-over';
+
+    const R = Math.max(60, Math.min(W,H)*.11), R2 = R*R;
+    const pdx = ptr.x - ptr.px, pdy = ptr.y - ptr.py;
+    ptr.speed += ((ptr.on ? Math.hypot(pdx,pdy) : 0) - ptr.speed)*.25;
+    const t = performance.now()*.001;
+    if (gust > 0) gust--;
+    if (sweep >= 0){ sweep += W/40; if (sweep > W + 40) sweep = -1; }
+    const now = MODES[mode].sand, old = MODES[sweepFrom].sand;
+
+    for (const p of parts){
+      if (p.delay > 0) p.delay--;
+      else if (gust < 20){ p.vx += (p.tx - p.x)*p.k; p.vy += (p.ty - p.y)*p.k; }
+      if (gust > 0){
+        p.vx += gustDir*.25 + Math.sin(p.y*.02 + t*3)*.15;
+        p.vy += Math.cos(p.x*.015 + t*2)*.12;
+      }
+      const dx = p.x - ptr.x, dy = p.y - ptr.y, d2 = dx*dx + dy*dy;
+      if (d2 < R2){
+        const d = Math.sqrt(d2) || 1, f = 1 - d/R;
+        p.vx += (dx/d)*f*3 + pdx*f*.35;
+        p.vy += (dy/d)*f*3 + pdy*f*.35;
+      }
+      p.vx *= .86; p.vy *= .86; p.x += p.vx; p.y += p.vy;
+      c.fillStyle = (sweep >= 0 && (W - p.x) > sweep) ? old[p.ci] : now[p.ci];
+      c.fillRect(p.x, p.y, p.s, p.s);
+    }
+
+    // دائرة مكان الإصبع
+    if (ptr.x > -999){
+      c.strokeStyle = 'rgba(255,240,215,.22)'; c.lineWidth = 1;
+      c.beginPath(); c.arc(ptr.x, ptr.y, 10 + ptr.speed*.6, 0, 7); c.stroke();
+    }
+    ptr.px = ptr.x; ptr.py = ptr.y;
+    tickAudio();
+    requestAnimationFrame(frame);
+  }
+
+  // اللمس والإدخال
+  const hint = document.getElementById('hint');
+  let hideHint = () => { hint.classList.add('gone'); hideHint = () => {}; };
+  let holdTimer = null;
+
+  const pos = e => { const r = fg.getBoundingClientRect(); ptr.x = e.clientX - r.left; ptr.y = e.clientY - r.top; };
+  fg.addEventListener('pointerdown', e => {
+    pos(e); ptr.px = ptr.x; ptr.py = ptr.y; ptr.on = true; ptr.sx = ptr.x; ptr.sy = ptr.y;
+    hideHint();
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { melted = true; setTargets(''); buzz(18); }, 420);
+  });
+  fg.addEventListener('pointermove', e => {
+    pos(e);
+    if (e.pointerType === 'mouse') ptr.on = true;
+    if (Math.hypot(ptr.x - ptr.sx, ptr.y - ptr.sy) > 14) clearTimeout(holdTimer);
+  });
+  const release = e => {
+    clearTimeout(holdTimer);
+    if (melted){ melted = false; setTargets(word); buzz(8); }
+    if (!e || e.pointerType !== 'mouse'){ ptr.on = false; ptr.x = ptr.y = ptr.px = ptr.py = -9999; }
+  };
+  fg.addEventListener('pointerup', release);
+  fg.addEventListener('pointercancel', release);
+  fg.addEventListener('pointerleave', () => { release(); ptr.on = false; ptr.x = ptr.y = ptr.px = ptr.py = -9999; });
+
+  const chips = document.getElementById('chips');
+  function renderChips(){
+    chips.innerHTML = '';
+    PRESETS.forEach(w => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = w;
+      b.setAttribute('aria-pressed', w === word);
+      b.onclick = () => { hideHint(); setWord(w); };
+      chips.appendChild(b);
+    });
+  }
+
+  // يتشكل الرمل أثناء الكتابة
+  const inp = document.getElementById('word'), count = document.getElementById('count');
+  let typeT;
+  inp.addEventListener('input', () => {
+    count.textContent = inp.value.length + '/12';
+    clearTimeout(typeT);
+    typeT = setTimeout(() => { const v = inp.value.trim(); if (v) setWord(v); }, 550);
+  });
+  document.getElementById('f').addEventListener('submit', e => { e.preventDefault(); inp.blur(); });
+  document.getElementById('gust').addEventListener('click', () => { hideHint(); blow(word); });
+
+  document.getElementById('mNight').onclick = () => setMode('night');
+  document.getElementById('mDusk').onclick = () => setMode('dusk');
+  const snd = document.getElementById('snd');
+  snd.onclick = () => {
+    try { if (!ac) initAudio(); if (ac.state === 'suspended') ac.resume(); } catch(e){}
+    soundOn = !soundOn; snd.setAttribute('aria-pressed', soundOn);
+  };
+
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(build, 200); });
+
+  renderChips();
+  const start = () => { build(); requestAnimationFrame(frame); };
+  (document.fonts ? document.fonts.load('700 100px "Aref Ruqaa"').catch(() => {}) : Promise.resolve()).then(start, start);
+})();
+</script>
+</body>
+</html>
